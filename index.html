@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LEENAI Profit Checker v1.5</title>
+<title>LEENAI Profit Checker v1.6</title>
 <script src="https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <style>
@@ -88,7 +88,7 @@ table.dt tr:hover td{background:var(--sf2);}
 <div id="appMain" class="hid">
   <div class="hd">
     <div class="logo">LEEN<span>AI</span></div>
-    <div class="hd-sub">Profit Checker | v1.5</div>
+    <div class="hd-sub">Profit Checker | v1.6</div>
     <div id="hdUser" class="hd-user" style="display:none;"></div>
     <div class="hd-gap"></div>
     <button class="btn-out" onclick="toggleTheme()">🌙 / ☀</button>
@@ -109,6 +109,7 @@ table.dt tr:hover td{background:var(--sf2);}
       <select id="fltMonthFrom" onchange="applyFilters()"><option value="">月From ▼</option></select>
       <span style="color:var(--tx2);font-size:12px;padding:0 2px;">〜</span>
       <select id="fltMonthTo" onchange="applyFilters()"><option value="">月To ▼</option></select>
+      <select id="fltItem" onchange="applyFilters()"><option value="">Item ▼</option></select>
       <select id="fltBuyer" onchange="applyFilters()"><option value="">Buyer ▼</option></select>
       <select id="fltSection" onchange="applyFilters()"><option value="">Section ▼</option></select>
       <select id="fltPacker" onchange="applyFilters()"><option value="">Packer ▼</option></select>
@@ -454,9 +455,12 @@ function processData(rawRows) {
     // Dray check
     const dray_chk = (TERM === '店頭' && Dray_C === 0) ? 'dray未' : 'dray OK';
 
+    const bl_etd = bk.crcf9_bl_etd ? bk.crcf9_bl_etd.slice(0,10) : '';
+
     result.push({
       bk_detail_ID: bd.bdId,
       invoice_no,
+      bl_etd,
       bl_number:  bk.cr49f_bl_number  || '',
       booking_no: bk.cr49f_booking_no  || '',
       buyer:      buyerRec.cr49f_buyer  || '',
@@ -480,12 +484,14 @@ function processData(rawRows) {
 // ══════════════════════════════════════════════════
 function populateFilters() {
   const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
+  const items   = uniq(allRows.map(r => r.item));
   const buyers  = uniq(allRows.map(r => r.buyer));
   const sects   = uniq(allRows.map(r => r.section));
   const packers = uniq(allRows.map(r => r.packer));
 
   fillMonthSel('fltMonthFrom', '月From ▼');
   fillMonthSel('fltMonthTo',   '月To ▼');
+  fillSel('fltItem',    items,   'Item ▼');
   fillSel('fltBuyer',   buyers,  'Buyer ▼');
   fillSel('fltSection', sects,   'Section ▼');
   fillSel('fltPacker',  packers, 'Packer ▼');
@@ -507,6 +513,7 @@ function fillSel(id, vals, ph) {
 function applyFilters() {
   const mf  = document.getElementById('fltMonthFrom').value;
   const mt  = document.getElementById('fltMonthTo').value;
+  const itm = document.getElementById('fltItem').value;
   const byr = document.getElementById('fltBuyer').value;
   const sec = document.getElementById('fltSection').value;
   const pkr = document.getElementById('fltPacker').value;
@@ -514,6 +521,7 @@ function applyFilters() {
   filteredRows = allRows.filter(r => {
     if (mf  && (!r.ym || r.ym.slice(4,6) < mf))    return false;
     if (mt  && (!r.ym || r.ym.slice(4,6) > mt))    return false;
+    if (itm && r.item    !== itm) return false;
     if (byr && r.buyer   !== byr) return false;
     if (sec && r.section !== sec) return false;
     if (pkr && r.packer  !== pkr) return false;
@@ -525,7 +533,7 @@ function applyFilters() {
 }
 
 function clearFilters() {
-  ['fltMonthFrom','fltMonthTo','fltBuyer','fltSection','fltPacker'].forEach(id =>
+  ['fltMonthFrom','fltMonthTo','fltItem','fltBuyer','fltSection','fltPacker'].forEach(id =>
     document.getElementById(id).value = '');
   applyFilters();
 }
@@ -536,8 +544,9 @@ function clearFilters() {
 function renderSummary(rows) {
   const sMap = {};
   rows.forEach(r => {
-    if (!sMap[r.section]) sMap[r.section] = { profit:0, mt:0, rateSum:0, cnt:0 };
+    if (!sMap[r.section]) sMap[r.section] = { sel:0, profit:0, mt:0, rateSum:0, cnt:0 };
     const s = sMap[r.section];
+    s.sel    += r.SEL;
     s.profit += r.Profit;
     s.mt     += r.Net_W;
     s.rateSum += r.rate;
@@ -554,16 +563,17 @@ function renderSummary(rows) {
     return true;
   }).reduce((a, [,v]) => a + v, 0);
 
-  let totalP = 0, totalMT = 0, totalRateSum = 0, totalCnt = 0;
+  let totalSel = 0, totalP = 0, totalMT = 0, totalRateSum = 0, totalCnt = 0;
   let rows_html = '';
 
   Object.keys(sMap).sort().forEach(sec => {
     const s = sMap[sec];
     const avgRate = s.cnt > 0 ? s.rateSum / s.cnt : 0;
     const pmt = s.mt > 0 && avgRate > 0 ? s.profit / s.mt / avgRate : 0;
-    totalP += s.profit; totalMT += s.mt; totalRateSum += s.rateSum; totalCnt += s.cnt;
+    totalSel += s.sel; totalP += s.profit; totalMT += s.mt; totalRateSum += s.rateSum; totalCnt += s.cnt;
     rows_html += `<tr>
       <td>${esc(sec)}</td>
+      <td class="r">${fmtY(s.sel)}</td>
       <td class="r ${s.profit>=0?'plus':'minus'}">${fmtY(s.profit)}</td>
       <td class="r">${fmtMT(s.mt)}</td>
       <td class="r ${pmt>=0?'plus':'minus'}">${fmtD(pmt,2)}</td>
@@ -578,6 +588,7 @@ function renderSummary(rows) {
   document.getElementById('sumTable').innerHTML = `
     <thead><tr>
       <th>品目</th>
+      <th class="r">売上 (¥)</th>
       <th class="r">Profit (¥)</th>
       <th class="r">MT 合計</th>
       <th class="r">$/MT</th>
@@ -586,18 +597,21 @@ function renderSummary(rows) {
       ${rows_html}
       <tr class="tr-total">
         <td>合計</td>
+        <td class="r">${fmtY(totalSel)}</td>
         <td class="r ${totalP>=0?'plus':'minus'}">${fmtY(totalP)}</td>
         <td class="r">${fmtMT(totalMT)}</td>
         <td class="r ${totalPmt>=0?'plus':'minus'}">${fmtD(totalPmt,2)}</td>
       </tr>
       <tr class="tr-exam">
         <td>検査費 (控除)</td>
+        <td class="r">—</td>
         <td class="r">▲ ${fmtY(examFee)}</td>
         <td class="r">—</td>
         <td class="r">—</td>
       </tr>
       <tr class="tr-final">
         <td>最終利益</td>
+        <td class="r">${fmtY(totalSel)}</td>
         <td class="r ${finalP>=0?'plus':'minus'}">${fmtY(finalP)}</td>
         <td class="r">${fmtMT(totalMT)}</td>
         <td class="r ${finalPmt>=0?'plus':'minus'}">${fmtD(finalPmt,2)}</td>
@@ -609,9 +623,7 @@ function renderSummary(rows) {
 //  DETAIL TABLE
 // ══════════════════════════════════════════════════
 const BASE_COLS = [
-  {k:'bl_chk',    h:'BL✓',       badge:true},
-  {k:'dray_chk',  h:'Dray✓',     badge:true},
-  {k:'isrc_chk',  h:'Isrc✓',     badge:true},
+  {k:'bl_etd',    h:'BL DATE'},
   {k:'invoice_no',h:'Invoice No'},
   {k:'buyer',     h:'Buyer'},
   {k:'packer',    h:'Packer'},
