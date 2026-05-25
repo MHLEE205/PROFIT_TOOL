@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LEENAI Profit Checker v1.3</title>
+<title>LEENAI Profit Checker v1.4</title>
 <script src="https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <style>
@@ -88,7 +88,7 @@ table.dt tr:hover td{background:var(--sf2);}
 <div id="appMain" class="hid">
   <div class="hd">
     <div class="logo">LEEN<span>AI</span></div>
-    <div class="hd-sub">Profit Checker | v1.3</div>
+    <div class="hd-sub">Profit Checker | v1.4</div>
     <div id="hdUser" class="hd-user" style="display:none;"></div>
     <div class="hd-gap"></div>
     <button class="btn-out" onclick="toggleTheme()">🌙 / ☀</button>
@@ -98,14 +98,14 @@ table.dt tr:hover td{background:var(--sf2);}
   <div class="main">
     <!-- Control bar -->
     <div class="ctrl">
+      <select id="selYear" onchange="loadData()" style="background:var(--sf2);color:var(--tx);border:1px solid var(--bd);border-radius:7px;padding:5px 12px;font-size:13px;font-family:inherit;font-weight:700;cursor:pointer;"></select>
       <button class="btn btn-ac" id="btnLoad" onclick="loadData()">データ読込</button>
       <button class="btn btn-wn" id="btnExcel" onclick="exportExcel()" disabled>Excel 내보내기</button>
-      <span class="status-txt" id="statusTxt">ログイン済み。データ読込ボタンを押してください。</span>
+      <span class="status-txt" id="statusTxt">年度を選択してデータ読込ボタンを押してください。</span>
     </div>
 
     <!-- Filter bar -->
     <div class="flt">
-      <select id="fltYear" onchange="applyFilters()"><option value="">年度 ▼</option></select>
       <select id="fltMonthFrom" onchange="applyFilters()"><option value="">月From ▼</option></select>
       <span style="color:var(--tx2);font-size:12px;padding:0 2px;">〜</span>
       <select id="fltMonthTo" onchange="applyFilters()"><option value="">月To ▼</option></select>
@@ -155,8 +155,21 @@ const API = "https://orgde512c6f.crm7.dynamics.com/api/data/v9.2";
 let token = null;
 let allRows = [];
 let filteredRows = [];
-let otherExpMap = {}; // YYYYMM → 検査費(¥)合計
+let otherExpMap = {};
 let showAll = false;
+
+// 年度セレクト初期化
+(function initYearSel() {
+  const cur = new Date().getFullYear();
+  const sel = document.getElementById('selYear');
+  sel.innerHTML = '';
+  for (let y = cur; y >= cur - 4; y--) {
+    const o = document.createElement('option');
+    o.value = y; o.textContent = y + '年';
+    sel.appendChild(o);
+  }
+  sel.value = cur;
+})();
 
 // ══════════════════════════════════════════════════
 //  AUTH
@@ -263,7 +276,12 @@ async function loadData() {
           '$expand=cr49f_buyer_id($select=cr49f_buyer,crcf9_country)))'
     ].join(',');
 
-    const filter = encodeURIComponent("crcf9_booking_id/cr49f_invoice_no ne null");
+    const yr = document.getElementById('selYear').value;
+    const filterBase = "crcf9_booking_id/cr49f_invoice_no ne null";
+    const filterYear = yr
+      ? ` and crcf9_booking_id/crcf9_bl_etd ge ${yr}-01-01 and crcf9_booking_id/crcf9_bl_etd lt ${parseInt(yr)+1}-01-01`
+      : '';
+    const filter = encodeURIComponent(filterBase + filterYear);
     const mainUrl = `${API}/crcf9_container_informations?$select=${sel}&$expand=${exp}&$filter=${filter}`;
 
     setStatus('コンテナ情報を読込中...');
@@ -461,19 +479,15 @@ function processData(rawRows) {
 // ══════════════════════════════════════════════════
 function populateFilters() {
   const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
-  const years   = [...new Set(allRows.map(r => r.ym ? r.ym.slice(0,4) : null).filter(Boolean))].sort().reverse();
   const buyers  = uniq(allRows.map(r => r.buyer));
   const sects   = uniq(allRows.map(r => r.section));
   const packers = uniq(allRows.map(r => r.packer));
 
-  fillSel('fltYear',  years,   '年度 ▼');
   fillMonthSel('fltMonthFrom', '月From ▼');
   fillMonthSel('fltMonthTo',   '月To ▼');
   fillSel('fltBuyer',   buyers,  'Buyer ▼');
   fillSel('fltSection', sects,   'Section ▼');
   fillSel('fltPacker',  packers, 'Packer ▼');
-
-  if (years.length > 0) document.getElementById('fltYear').value = years[0];
 }
 
 function fillMonthSel(id, ph) {
@@ -490,7 +504,6 @@ function fillSel(id, vals, ph) {
 }
 
 function applyFilters() {
-  const yr  = document.getElementById('fltYear').value;
   const mf  = document.getElementById('fltMonthFrom').value;
   const mt  = document.getElementById('fltMonthTo').value;
   const byr = document.getElementById('fltBuyer').value;
@@ -498,7 +511,6 @@ function applyFilters() {
   const pkr = document.getElementById('fltPacker').value;
 
   filteredRows = allRows.filter(r => {
-    if (yr  && (!r.ym || r.ym.slice(0,4) !== yr))  return false;
     if (mf  && (!r.ym || r.ym.slice(4,6) < mf))    return false;
     if (mt  && (!r.ym || r.ym.slice(4,6) > mt))    return false;
     if (byr && r.buyer   !== byr) return false;
@@ -512,7 +524,7 @@ function applyFilters() {
 }
 
 function clearFilters() {
-  ['fltYear','fltMonthFrom','fltMonthTo','fltBuyer','fltSection','fltPacker'].forEach(id =>
+  ['fltMonthFrom','fltMonthTo','fltBuyer','fltSection','fltPacker'].forEach(id =>
     document.getElementById(id).value = '');
   applyFilters();
 }
@@ -531,7 +543,7 @@ function renderSummary(rows) {
     s.cnt++;
   });
 
-  const yr = document.getElementById('fltYear').value;
+  const yr = document.getElementById('selYear').value;
   const mf = document.getElementById('fltMonthFrom').value;
   const mt = document.getElementById('fltMonthTo').value;
   const examFee = Object.entries(otherExpMap).filter(([ym]) => {
