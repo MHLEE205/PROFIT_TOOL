@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LEENAI Profit Checker v1.0</title>
+<script src="https://alcdn.msauth.net/browser/2.39.0/js/msal-browser.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#0f1117;--sf:#1a1d27;--sf2:#22263a;--sf3:#2a2f46;--bd:#2e3350;--ac:#4f8ef7;--ok:#22c55e;--wn:#f59e0b;--dg:#ef4444;--tx:#e2e8f0;--tx2:#8892a4;--tx3:#4a5568;--r:10px;}
+[data-theme="light"]{--bg:#f4f6fb;--sf:#ffffff;--sf2:#f0f4ff;--sf3:#e8edf7;--bd:#d1d5db;--tx:#111827;--tx2:#6b7280;--tx3:#9ca3af;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI','Noto Sans JP',sans-serif;background:var(--bg);color:var(--tx);font-size:13px;}
+.hd{background:var(--sf);border-bottom:1px solid var(--bd);padding:0 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:200;height:46px;}
+.logo{font-size:17px;font-weight:800;letter-spacing:1px;}.logo span{color:var(--ac);}
+.hd-sub{font-size:11px;color:var(--ac);font-weight:600;}
+.hd-user{font-size:12px;background:rgba(79,142,247,.15);color:var(--ac);padding:3px 10px;border-radius:12px;}
+.hd-gap{flex:1;}
+.main{max-width:1640px;margin:0 auto;padding:12px 16px;}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:12px 16px;margin-bottom:10px;}
+.btn{padding:6px 14px;border-radius:7px;border:none;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;transition:opacity .15s;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-ac{background:var(--ac);color:#fff;}.btn-ac:hover:not(:disabled){opacity:.85;}
+.btn-wn{background:var(--wn);color:#000;}.btn-wn:hover:not(:disabled){opacity:.85;}
+.btn-sm{background:var(--sf2);color:var(--tx2);border:1px solid var(--bd);padding:4px 10px;font-size:11px;}
+.btn-sm:hover{color:var(--tx);border-color:var(--ac);}
+.btn-out{background:none;border:1px solid var(--bd);color:var(--tx2);padding:4px 10px;font-size:11px;border-radius:6px;cursor:pointer;}
+.btn-out:hover{border-color:var(--tx2);}
+.ctrl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+.status-txt{font-size:11px;color:var(--tx2);margin-left:4px;}
+.flt{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.flt select{background:var(--sf2);color:var(--tx);border:1px solid var(--bd);border-radius:7px;padding:4px 10px;font-size:12px;font-family:inherit;cursor:pointer;min-width:110px;}
+.flt select:focus{outline:none;border-color:var(--ac);}
+.sec-hd{font-size:11px;font-weight:700;color:var(--ac);margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.sec-hd span{flex:1;height:1px;background:var(--bd);}
+/* Summary table */
+.sum-tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.sum-tbl th{background:var(--sf2);color:var(--tx2);font-size:10px;font-weight:600;padding:5px 10px;border-bottom:1px solid var(--bd);}
+.sum-tbl th.r{text-align:right;}
+.sum-tbl th:first-child{text-align:left;}
+.sum-tbl td{padding:5px 10px;border-bottom:1px solid var(--bd);}
+.sum-tbl td.r{text-align:right;}
+.sum-tbl td:first-child{font-weight:600;}
+.sum-tbl tr:hover td{background:var(--sf2);}
+.sum-tbl .tr-total td{font-weight:700;font-size:13px;border-top:2px solid var(--bd);background:var(--sf3);}
+.sum-tbl .tr-exam td{color:var(--dg);font-style:italic;background:rgba(239,68,68,.04);}
+.sum-tbl .tr-final td{font-weight:800;font-size:14px;color:var(--ac);background:rgba(79,142,247,.08);}
+.plus{color:var(--ok);}.minus{color:var(--dg);}
+/* Detail table */
+.tbl-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.tbl-wrap{overflow-x:auto;}
+table.dt{width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap;}
+table.dt th{background:var(--sf2);color:var(--tx2);font-size:10px;font-weight:600;padding:4px 7px;text-align:left;border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:10;}
+table.dt th.r{text-align:right;}
+table.dt td{padding:3px 7px;border-bottom:1px solid var(--bd);}
+table.dt td.r{text-align:right;}
+table.dt tr:hover td{background:var(--sf2);}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;}
+.bdg-ok{color:var(--ok);}.bdg-ng{background:#ffcccc;color:#cc0000;}.bdg-lc{color:#888;}
+.ld-wrap{display:flex;align-items:center;gap:10px;padding:30px;justify-content:center;}
+.spinner{width:20px;height:20px;border:2px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:spn .6s linear infinite;}
+@keyframes spn{to{transform:rotate(360deg);}}
+.footer{text-align:center;padding:18px 0;font-size:13px;color:var(--ac);border-top:1px solid var(--bd);margin-top:16px;font-weight:600;letter-spacing:1px;}
+/* Login Gate */
+#loginGate{display:flex;position:fixed;inset:0;background:#0f1117;z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:18px;}
+.gate-logo{font-size:52px;font-weight:900;letter-spacing:4px;color:var(--tx);}
+.gate-logo span{color:var(--ac);}
+.gate-sub{font-size:14px;color:var(--tx2);letter-spacing:3px;}
+.gate-btn{background:var(--ac);color:#fff;border:none;padding:13px 44px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:1px;}
+.gate-btn:hover{opacity:.85;}
+.gate-note{font-size:11px;color:var(--tx3);text-align:center;line-height:1.7;}
+.gate-err{color:var(--dg);font-size:12px;padding:6px 14px;background:rgba(239,68,68,.1);border-radius:6px;display:none;max-width:360px;text-align:center;}
+.hid{display:none!important;}
+</style>
+</head>
+<body>
+
+<!-- ── Login Gate ─────────────────────────────────────── -->
+<div id="loginGate">
+  <div class="gate-logo">LEEN<span>AI</span></div>
+  <div class="gate-sub">Profit Checker</div>
+  <button class="gate-btn" id="gateLoginBtn" onclick="login()">Microsoft ログイン</button>
+  <div class="gate-note">LEENAI-ShippingSchedule アカウントでログインしてください<br>ポップアップブロックを解除してからお試しください</div>
+  <div id="gateErr" class="gate-err"></div>
+</div>
+
+<!-- ── Main App ───────────────────────────────────────── -->
+<div id="appMain" class="hid">
+  <div class="hd">
+    <div class="logo">LEEN<span>AI</span></div>
+    <div class="hd-sub">Profit Checker | v1.0</div>
+    <div id="hdUser" class="hd-user" style="display:none;"></div>
+    <div class="hd-gap"></div>
+    <button class="btn-out" onclick="toggleTheme()">🌙 / ☀</button>
+    <button class="btn btn-sm" onclick="logout()">ログアウト</button>
+  </div>
+
+  <div class="main">
+    <!-- Control bar -->
+    <div class="ctrl">
+      <button class="btn btn-ac" id="btnLoad" onclick="loadData()">データ読込</button>
+      <button class="btn btn-wn" id="btnExcel" onclick="exportExcel()" disabled>Excel 내보내기</button>
+      <span class="status-txt" id="statusTxt">ログイン済み。データ読込ボタンを押してください。</span>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="flt">
+      <select id="fltYm" onchange="applyFilters()"><option value="">年月 ▼</option></select>
+      <select id="fltBuyer" onchange="applyFilters()"><option value="">Buyer ▼</option></select>
+      <select id="fltSection" onchange="applyFilters()"><option value="">Section ▼</option></select>
+      <select id="fltPacker" onchange="applyFilters()"><option value="">Packer ▼</option></select>
+      <button class="btn btn-sm" onclick="clearFilters()">フィルタ初期化</button>
+    </div>
+
+    <!-- Summary -->
+    <div class="card" id="summaryArea" style="display:none;">
+      <div class="sec-hd">品目別 サマリー <span></span></div>
+      <table class="sum-tbl" id="sumTable"></table>
+    </div>
+
+    <!-- Detail -->
+    <div class="card" id="detailArea" style="display:none;">
+      <div class="tbl-hdr">
+        <div class="sec-hd" style="margin:0;">明細テーブル <span></span></div>
+        <button class="btn btn-sm" id="btnToggle" onclick="toggleCols()">全カラム表示 ▼</button>
+      </div>
+      <div class="tbl-wrap">
+        <table class="dt" id="dtTable"></table>
+      </div>
+    </div>
+
+    <div class="footer">✦ Powered by LEENAI Automation System</div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+//  MSAL CONFIG
+// ══════════════════════════════════════════════════
+const msalConfig = {
+  auth: {
+    clientId: "f071a165-5e9b-44bf-b6a1-baba654524db",
+    authority: "https://login.microsoftonline.com/a56988ff-c2b8-4df8-9727-889ad4205198",
+    redirectUri: "https://mhlee205.github.io/PROFIT_TOOL/"
+  },
+  cache: { cacheLocation: "sessionStorage" }
+};
+const loginRequest = { scopes: ["https://orgde512c6f.crm7.dynamics.com/.default"] };
+const msalInstance = new msal.PublicClientApplication(msalConfig);
+const API = "https://orgde512c6f.crm7.dynamics.com/api/data/v9.2";
+
+let token = null;
+let allRows = [];
+let filteredRows = [];
+let otherExpMap = {}; // YYYYMM → 検査費(¥)合計
+let showAll = false;
+
+// ══════════════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════════════
+async function login() {
+  const btn = document.getElementById('gateLoginBtn');
+  btn.disabled = true;
+  btn.textContent = 'ログイン中...';
+  try {
+    const resp = await msalInstance.loginPopup(loginRequest);
+    msalInstance.setActiveAccount(resp.account);
+    token = await getToken();
+    document.getElementById('loginGate').classList.add('hid');
+    document.getElementById('appMain').classList.remove('hid');
+    const userEl = document.getElementById('hdUser');
+    userEl.textContent = resp.account.username;
+    userEl.style.display = '';
+  } catch(e) {
+    showGateErr(e.message || 'ログイン失敗。ポップアップブロックを確認してください。');
+    btn.disabled = false;
+    btn.textContent = 'Microsoft ログイン';
+  }
+}
+
+async function getToken() {
+  try {
+    const r = await msalInstance.acquireTokenSilent(loginRequest);
+    return r.accessToken;
+  } catch {
+    const r = await msalInstance.acquireTokenPopup(loginRequest);
+    return r.accessToken;
+  }
+}
+
+function logout() {
+  msalInstance.logoutPopup();
+  setTimeout(() => location.reload(), 500);
+}
+
+// ══════════════════════════════════════════════════
+//  FETCH (with pagination)
+// ══════════════════════════════════════════════════
+async function fetchAll(url) {
+  let results = [], nextUrl = url, retried = false;
+  while (nextUrl) {
+    const res = await fetch(nextUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'OData-MaxVersion': '4.0',
+        'OData-Version': '4.0',
+        'Accept': 'application/json',
+        'Prefer': 'odata.include-annotations="OData.Community.Display.V1.FormattedValue"'
+      }
+    });
+    if (res.status === 401 && !retried) {
+      retried = true;
+      token = await getToken();
+      continue;
+    }
+    if (!res.ok) {
+      const body = await res.text();
+      if (res.status === 400) throw new Error(`OData構文エラー(400)。フィールド名を確認してください。\n${body.slice(0,200)}`);
+      if (res.status === 401) throw new Error('認証エラー(401)。再ログインしてください。');
+      if (res.status === 403) throw new Error('アクセス権限がありません(403)。');
+      throw new Error(`APIエラー ${res.status}: ${body.slice(0,200)}`);
+    }
+    const data = await res.json();
+    results = results.concat(data.value || []);
+    nextUrl = data['@odata.nextLink'] || null;
+    retried = false;
+  }
+  return results;
+}
+
+// ══════════════════════════════════════════════════
+//  LOAD DATA
+// ══════════════════════════════════════════════════
+async function loadData() {
+  const btn = document.getElementById('btnLoad');
+  btn.disabled = true;
+  document.getElementById('btnExcel').disabled = true;
+  document.getElementById('summaryArea').style.display = 'none';
+  document.getElementById('detailArea').style.display = 'none';
+  setStatus('データ読込中...');
+
+  try {
+    token = await getToken();
+
+    // Main OData query
+    const sel = 'crcf9_dray_cost,crcf9_incoterms,crcf9_other_expense,crcf9_purchase_price,crcf9_booking_detail_idname,crcf9_n_w';
+
+    const exp = [
+      'cr49f_booking_id($select=cr49f_bl_number,cr49f_booking_no,cr49f_invoice_no,' +
+        'crcf9_bl_additional_charge,crcf9_bl_additional_charge_taxable,' +
+        'crcf9_bl_etd,crcf9_bl_exchange_rate,crcf9_bl_freight;' +
+        '$expand=crcf9_carrier_cost_id($select=crcf9_carrier_name,crcf9_cost_per_bl,' +
+          'crcf9_cost_per_van_jpy,crcf9_cost_per_van_usd),' +
+        'crcf9_fowarder_id($select=crcf9_custom_fee,crcf9_forwarder_cost))',
+      'cr49f_item_id($select=cr49f_item,cr49f_naccs_code)',
+      'cr49f_purchase_contract_id($select=cr49f_exchange_rate;' +
+        '$expand=cr49f_packer_id($select=cr49f_packer))',
+      'cr49f_sale_detail_id($select=cr49f_price,cr49f_price_yen;' +
+        '$expand=cr49f_sale_contract_id($select=cr49f_commission,cr49f_terms_conditions;' +
+          '$expand=cr49f_buyer_id($select=cr49f_buyer,crcf9_country)))'
+    ].join(',');
+
+    const filter = encodeURIComponent("cr49f_booking_id/cr49f_invoice_no ne null");
+    const mainUrl = `${API}/crcf9_container_informations?$select=${sel}&$expand=${exp}&$filter=${filter}`;
+
+    setStatus('コンテナ情報を読込中...');
+    const rawRows = await fetchAll(mainUrl);
+    setStatus(`${rawRows.length}件 取得完了。検査費データを読込中...`);
+
+    // Other expenses (検査費)
+    try {
+      const otherRaw = await fetchAll(`${API}/crcf9_other_expenseses?$select=crcf9_period,crcf9_cost`);
+      otherExpMap = {};
+      otherRaw.forEach(r => {
+        const ym = toYM(r.crcf9_period);
+        if (ym) otherExpMap[ym] = (otherExpMap[ym] || 0) + n(r.crcf9_cost);
+      });
+    } catch(e) {
+      console.warn('検査費データ取得失敗:', e.message);
+      otherExpMap = {};
+    }
+
+    allRows = processData(rawRows);
+    populateFilters();
+    applyFilters();
+
+    document.getElementById('btnExcel').disabled = false;
+    document.getElementById('summaryArea').style.display = '';
+    document.getElementById('detailArea').style.display = '';
+    setStatus(`${allRows.length}件 処理完了`);
+
+  } catch(e) {
+    setStatus(e.message, true);
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  PROCESS DATA
+// ══════════════════════════════════════════════════
+function n(v) { return (v == null || v === '') ? 0 : (Number(v) || 0); }
+
+function toYM(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return null;
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function getSection(naccs) {
+  if (!naccs) return 'その他';
+  if (String(naccs).startsWith('4707')) return '古紙';
+  if (String(naccs).startsWith('6709')) return '古着';
+  if (String(naccs).startsWith('7602')) return '非鉄';
+  if (String(naccs).startsWith('4706')) return '古紙パルプ';
+  return 'その他';
+}
+
+// Optionset label: try formatted annotation first, fall back to raw value
+function optLabel(raw, key, obj) {
+  const ann = obj[key + '@OData.Community.Display.V1.FormattedValue'];
+  return ann != null ? String(ann) : (raw != null ? String(raw) : '');
+}
+
+function processData(rawRows) {
+  // Step 1: invoice_no별 CNTR 수 집계
+  const cntrMap = {};
+  rawRows.forEach(r => {
+    const inv = r.cr49f_booking_id?.cr49f_invoice_no;
+    if (inv) cntrMap[inv] = (cntrMap[inv] || 0) + 1;
+  });
+
+  // Step 2: bk_detail_ID별 집계
+  const bdMap = new Map();
+  let fallbackIdx = 0;
+  rawRows.forEach(r => {
+    const bdId = r.crcf9_booking_detail_idname || ('__nobd_' + (fallbackIdx++));
+    if (!bdMap.has(bdId)) {
+      bdMap.set(bdId, { _first: r, bdId, nwSum: 0, drayCSum: 0, drayEtcSum: 0, cnt: 0 });
+    }
+    const bd = bdMap.get(bdId);
+    bd.nwSum += n(r.crcf9_n_w);
+    bd.drayCSum += n(r.crcf9_dray_cost);
+    bd.drayEtcSum += n(r.crcf9_other_expense);
+    bd.cnt++;
+  });
+
+  // Step 3: 이익 계산
+  const result = [];
+  bdMap.forEach(bd => {
+    const r = bd._first;
+    const bk        = r.cr49f_booking_id         || {};
+    const carrier   = bk.crcf9_carrier_cost_id   || {};
+    const fwd       = bk.crcf9_fowarder_id        || {};
+    const itemRec   = r.cr49f_item_id             || {};
+    const pc        = r.cr49f_purchase_contract_id || {};
+    const packerRec = pc.cr49f_packer_id          || {};
+    const sd        = r.cr49f_sale_detail_id      || {};
+    const sc        = sd.cr49f_sale_contract_id   || {};
+    const buyerRec  = sc.cr49f_buyer_id           || {};
+
+    const invoice_no = bk.cr49f_invoice_no || '';
+    const CNTR = cntrMap[invoice_no] || 1;
+    const bk_detail_count = bd.cnt;
+
+    // Raw values (null→0)
+    const Net_W  = bd.nwSum / 1000;            // KG→MT
+    const Buy_Y  = n(r.crcf9_purchase_price);
+    const Dray_C = bd.drayCSum;
+    const Dray_etc = bd.drayEtcSum;
+    const sel_d  = n(sd.cr49f_price);
+    const sel_y  = n(sd.cr49f_price_yen);
+    const rate   = n(pc.cr49f_exchange_rate);
+    const cms    = n(sc.cr49f_commission);
+    const bl_rate     = n(bk.crcf9_bl_exchange_rate);
+    const C_Van_D     = n(carrier.crcf9_cost_per_van_usd);
+    const C_Van_Y     = n(carrier.crcf9_cost_per_van_jpy);
+    const cost_per_bl = n(carrier.crcf9_cost_per_bl);
+    const custom_fee  = n(fwd.crcf9_custom_fee);
+    const custom_d_c  = n(fwd.crcf9_forwarder_cost);
+    const bl_etc_c    = n(bk.crcf9_bl_additional_charge);
+    const bl_etc_c_t  = n(bk.crcf9_bl_additional_charge_taxable);
+    // ⚠️ insurance: ODataフィールド名未確定 → 0で仮置き (要確認)
+    const insurance = 0;
+
+    // TERM / terms_c (optionset → formatted value)
+    const TERM   = optLabel(r.crcf9_incoterms, 'crcf9_incoterms', r);
+    const terms_c = optLabel(sc.cr49f_terms_conditions, 'cr49f_terms_conditions', sc);
+
+    // Calculations
+    const BUY = Net_W * Buy_Y * 1000;
+    const SEL = sel_y > 0
+      ? Net_W * sel_y * 1000
+      : Math.round(sel_d * Net_W * rate);
+    const S_cms    = rate * cms * Net_W;
+    const Isrc_con = insurance / CNTR * bk_detail_count;
+    const Cstm     = (custom_fee + custom_d_c) / CNTR * bk_detail_count;
+    const Mrn = bl_rate > 0
+      ? bk_detail_count * C_Van_D * bl_rate + bk_detail_count * C_Van_Y + cost_per_bl / CNTR * bk_detail_count
+      : bk_detail_count * C_Van_D * rate    + cost_per_bl / CNTR * bk_detail_count;
+    const BL_etc  = (bl_etc_c + bl_etc_c_t) / CNTR * bk_detail_count;
+    const Profit  = SEL - BUY - Dray_C - Cstm - Mrn - S_cms - Isrc_con - BL_etc - Dray_etc;
+    const p1mt    = Net_W > 0 && rate > 0 ? Profit / Net_W / rate : 0;
+    const Qtn_cn  = bk_detail_count > 0 ? Net_W / bk_detail_count : 0;
+
+    // Date
+    const ym = toYM(bk.crcf9_bl_etd) || '';
+
+    // Section
+    const section = getSection(itemRec.cr49f_naccs_code);
+    const is_local  = invoice_no.startsWith('L');
+    const is_export = !is_local;
+
+    // BL check
+    let bl_chk;
+    if (is_export) {
+      if (!bk.cr49f_bl_number) bl_chk = 'bl未';
+      else if (!n(fwd.crcf9_custom_fee)) bl_chk = 'ctsm未';
+      else bl_chk = 'bl ok';
+    } else {
+      bl_chk = 'local';
+    }
+
+    // Isrc check
+    let isrc_chk = 'isrc OK';
+    if (is_export && (terms_c === 'CIF' || terms_c === 'DAP') && insurance === 0) {
+      isrc_chk = 'isrc未';
+    }
+
+    // Dray check
+    const dray_chk = (TERM === '店頭' && Dray_C === 0) ? 'dray未' : 'dray OK';
+
+    result.push({
+      bk_detail_ID: bd.bdId,
+      invoice_no,
+      bl_number:  bk.cr49f_bl_number  || '',
+      booking_no: bk.cr49f_booking_no  || '',
+      buyer:      buyerRec.cr49f_buyer  || '',
+      country:    buyerRec.crcf9_country || '',
+      packer:     packerRec.cr49f_packer || '',
+      item:       itemRec.cr49f_item     || '',
+      section, ym,
+      Buy_Y, sel_d, sel_y, rate, cms,
+      Net_W, SEL, BUY, Profit, p1mt,
+      Dray_C, Cstm, Mrn, Isrc_con, BL_etc, S_cms, Dray_etc, Qtn_cn,
+      TERM, terms_c, CNTR, bk_detail_count,
+      bl_chk, isrc_chk, dray_chk, is_export
+    });
+  });
+
+  return result;
+}
+
+// ══════════════════════════════════════════════════
+//  FILTERS
+// ══════════════════════════════════════════════════
+function populateFilters() {
+  const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
+  const yms     = uniq(allRows.map(r => r.ym)).sort().reverse();
+  const buyers  = uniq(allRows.map(r => r.buyer));
+  const sects   = uniq(allRows.map(r => r.section));
+  const packers = uniq(allRows.map(r => r.packer));
+
+  fillSel('fltYm',      yms,     '年月 ▼');
+  fillSel('fltBuyer',   buyers,  'Buyer ▼');
+  fillSel('fltSection', sects,   'Section ▼');
+  fillSel('fltPacker',  packers, 'Packer ▼');
+
+  if (yms.length > 0) document.getElementById('fltYm').value = yms[0];
+}
+
+function fillSel(id, vals, ph) {
+  document.getElementById(id).innerHTML =
+    `<option value="">${ph}</option>` +
+    vals.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+}
+
+function applyFilters() {
+  const ym  = document.getElementById('fltYm').value;
+  const byr = document.getElementById('fltBuyer').value;
+  const sec = document.getElementById('fltSection').value;
+  const pkr = document.getElementById('fltPacker').value;
+
+  filteredRows = allRows.filter(r =>
+    (!ym  || r.ym      === ym)  &&
+    (!byr || r.buyer   === byr) &&
+    (!sec || r.section === sec) &&
+    (!pkr || r.packer  === pkr)
+  );
+
+  renderSummary(filteredRows);
+  renderDetail(filteredRows);
+}
+
+function clearFilters() {
+  ['fltYm','fltBuyer','fltSection','fltPacker'].forEach(id =>
+    document.getElementById(id).value = '');
+  applyFilters();
+}
+
+// ══════════════════════════════════════════════════
+//  SUMMARY TABLE
+// ══════════════════════════════════════════════════
+function renderSummary(rows) {
+  const sMap = {};
+  rows.forEach(r => {
+    if (!sMap[r.section]) sMap[r.section] = { profit:0, mt:0, rateSum:0, cnt:0 };
+    const s = sMap[r.section];
+    s.profit += r.Profit;
+    s.mt     += r.Net_W;
+    s.rateSum += r.rate;
+    s.cnt++;
+  });
+
+  const ym = document.getElementById('fltYm').value;
+  const examFee = ym
+    ? (otherExpMap[ym] || 0)
+    : Object.values(otherExpMap).reduce((a,b) => a+b, 0);
+
+  let totalP = 0, totalMT = 0, totalRateSum = 0, totalCnt = 0;
+  let rows_html = '';
+
+  Object.keys(sMap).sort().forEach(sec => {
+    const s = sMap[sec];
+    const avgRate = s.cnt > 0 ? s.rateSum / s.cnt : 0;
+    const pmt = s.mt > 0 && avgRate > 0 ? s.profit / s.mt / avgRate : 0;
+    totalP += s.profit; totalMT += s.mt; totalRateSum += s.rateSum; totalCnt += s.cnt;
+    rows_html += `<tr>
+      <td>${esc(sec)}</td>
+      <td class="r ${s.profit>=0?'plus':'minus'}">${fmtY(s.profit)}</td>
+      <td class="r">${fmtMT(s.mt)}</td>
+      <td class="r ${pmt>=0?'plus':'minus'}">${fmtD(pmt,2)}</td>
+    </tr>`;
+  });
+
+  const totalAvgRate = totalCnt > 0 ? totalRateSum / totalCnt : 0;
+  const totalPmt = totalMT > 0 && totalAvgRate > 0 ? totalP / totalMT / totalAvgRate : 0;
+  const finalP   = totalP - examFee;
+  const finalPmt = totalMT > 0 && totalAvgRate > 0 ? finalP / totalMT / totalAvgRate : 0;
+
+  document.getElementById('sumTable').innerHTML = `
+    <thead><tr>
+      <th>品目</th>
+      <th class="r">Profit (¥)</th>
+      <th class="r">MT 合計</th>
+      <th class="r">$/MT</th>
+    </tr></thead>
+    <tbody>
+      ${rows_html}
+      <tr class="tr-total">
+        <td>合計</td>
+        <td class="r ${totalP>=0?'plus':'minus'}">${fmtY(totalP)}</td>
+        <td class="r">${fmtMT(totalMT)}</td>
+        <td class="r ${totalPmt>=0?'plus':'minus'}">${fmtD(totalPmt,2)}</td>
+      </tr>
+      <tr class="tr-exam">
+        <td>検査費 (控除)</td>
+        <td class="r">▲ ${fmtY(examFee)}</td>
+        <td class="r">—</td>
+        <td class="r">—</td>
+      </tr>
+      <tr class="tr-final">
+        <td>最終利益</td>
+        <td class="r ${finalP>=0?'plus':'minus'}">${fmtY(finalP)}</td>
+        <td class="r">${fmtMT(totalMT)}</td>
+        <td class="r ${finalPmt>=0?'plus':'minus'}">${fmtD(finalPmt,2)}</td>
+      </tr>
+    </tbody>`;
+}
+
+// ══════════════════════════════════════════════════
+//  DETAIL TABLE
+// ══════════════════════════════════════════════════
+const BASE_COLS = [
+  {k:'bl_chk',    h:'BL✓',       badge:true},
+  {k:'dray_chk',  h:'Dray✓',     badge:true},
+  {k:'isrc_chk',  h:'Isrc✓',     badge:true},
+  {k:'invoice_no',h:'Invoice No'},
+  {k:'buyer',     h:'Buyer'},
+  {k:'packer',    h:'Packer'},
+  {k:'item',      h:'Item'},
+  {k:'Buy_Y',     h:'Buy_Y',      r:true, fmt:'d1'},
+  {k:'sel_d',     h:'Sel_D($)',   r:true, fmt:'d2'},
+  {k:'Net_W',     h:'Net_W(MT)',  r:true, fmt:'mt'},
+  {k:'SEL',       h:'SEL(¥)',     r:true, fmt:'y'},
+  {k:'BUY',       h:'BUY(¥)',     r:true, fmt:'y'},
+  {k:'Profit',    h:'Profit(¥)',  r:true, fmt:'y', profit:true},
+  {k:'p1mt',      h:'$/MT',       r:true, fmt:'d2', profit:true},
+];
+const EXT_COLS = [
+  {k:'cms',      h:'cms($/MT)',   r:true, fmt:'d2'},
+  {k:'rate',     h:'Rate(¥/$)',   r:true, fmt:'d1'},
+  {k:'Dray_C',   h:'Dray_C(¥)',  r:true, fmt:'y'},
+  {k:'Cstm',     h:'Cstm(¥)',    r:true, fmt:'y'},
+  {k:'Mrn',      h:'Mrn(¥)',     r:true, fmt:'y'},
+  {k:'Isrc_con', h:'Isrc(¥)',    r:true, fmt:'y'},
+  {k:'BL_etc',   h:'BL_etc(¥)', r:true, fmt:'y'},
+  {k:'S_cms',    h:'S_cms(¥)',   r:true, fmt:'y'},
+  {k:'Dray_etc', h:'Dray_etc(¥)',r:true, fmt:'y'},
+  {k:'Qtn_cn',   h:'Qtn_cn(MT)', r:true, fmt:'mt'},
+  {k:'ym',       h:'年月'},
+];
+
+function renderDetail(rows) {
+  const cols = showAll ? [...BASE_COLS, ...EXT_COLS] : BASE_COLS;
+
+  const thead = '<thead><tr>' +
+    cols.map(c => `<th class="${c.r?'r':''}">${esc(c.h)}</th>`).join('') +
+    '</tr></thead>';
+
+  const tbody = '<tbody>' + rows.map(r => '<tr>' +
+    cols.map(c => {
+      const v = r[c.k];
+      if (c.badge) return `<td>${mkBadge(v)}</td>`;
+      const cls = c.r ? 'r' : '';
+      if (c.fmt === 'y') {
+        const col = c.profit ? (Number(v)>=0 ? 'var(--ok)' : 'var(--dg)') : '';
+        return `<td class="${cls}" style="${col?`color:${col}`:''}"> ${fmtY(v)}</td>`;
+      }
+      if (c.fmt === 'mt') return `<td class="${cls}">${fmtMT(v)}</td>`;
+      if (c.fmt === 'd2') return `<td class="${cls}">${fmtD(v,2)}</td>`;
+      if (c.fmt === 'd1') return `<td class="${cls}">${fmtD(v,1)}</td>`;
+      return `<td class="${cls}">${esc(String(v ?? ''))}</td>`;
+    }).join('') + '</tr>'
+  ).join('') + '</tbody>';
+
+  document.getElementById('dtTable').innerHTML = thead + tbody;
+}
+
+function mkBadge(v) {
+  if (!v) return '';
+  const s = String(v);
+  if (s.endsWith('未'))      return `<span class="badge bdg-ng">${esc(s)}</span>`;
+  if (s.endsWith('OK') || s.endsWith('ok')) return `<span class="badge bdg-ok">${esc(s)}</span>`;
+  if (s === 'local')          return `<span class="badge bdg-lc">${esc(s)}</span>`;
+  return `<span class="badge">${esc(s)}</span>`;
+}
+
+function toggleCols() {
+  showAll = !showAll;
+  document.getElementById('btnToggle').textContent =
+    showAll ? '基本カラム表示 ▲' : '全カラム表示 ▼';
+  renderDetail(filteredRows);
+}
+
+// ══════════════════════════════════════════════════
+//  EXCEL EXPORT
+// ══════════════════════════════════════════════════
+function exportExcel() {
+  if (!filteredRows.length) return;
+  const ym = document.getElementById('fltYm').value || 'ALL';
+  const cols = [...BASE_COLS, ...EXT_COLS];
+  const header = cols.map(c => c.h);
+  const data = filteredRows.map(r => cols.map(c => {
+    const v = r[c.k];
+    if (c.fmt) return Number(v) || 0;
+    return v ?? '';
+  }));
+  const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Profit');
+  XLSX.writeFile(wb, `LEENAI_Profit_${ym}.xlsx`);
+}
+
+// ══════════════════════════════════════════════════
+//  FORMAT HELPERS
+// ══════════════════════════════════════════════════
+function fmtY(v) {
+  const num = Math.round(Number(v) || 0);
+  return '¥' + num.toLocaleString('ja-JP');
+}
+function fmtMT(v) {
+  return (Number(v)||0).toLocaleString('ja-JP',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtD(v, dp=2) {
+  return '$' + (Number(v)||0).toLocaleString('ja-JP',{minimumFractionDigits:dp,maximumFractionDigits:dp});
+}
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ══════════════════════════════════════════════════
+//  UI HELPERS
+// ══════════════════════════════════════════════════
+function setStatus(msg, isErr=false) {
+  const el = document.getElementById('statusTxt');
+  el.textContent = msg;
+  el.style.color = isErr ? 'var(--dg)' : 'var(--tx2)';
+}
+function showGateErr(msg) {
+  const el = document.getElementById('gateErr');
+  el.textContent = msg;
+  el.style.display = '';
+}
+function toggleTheme() {
+  const h = document.documentElement;
+  h.setAttribute('data-theme', h.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+}
+</script>
+</body>
+</html>
