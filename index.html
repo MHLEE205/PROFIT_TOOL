@@ -243,7 +243,7 @@ async function loadData() {
     token = await getToken();
 
     // Main OData query
-    const sel = 'crcf9_dray_cost,crcf9_incoterms,crcf9_other_expense,crcf9_purchase_price,crcf9_booking_detail_idname,crcf9_n_w';
+    const sel = 'crcf9_dray_cost,crcf9_incoterms,crcf9_other_expense,crcf9_purchase_price,_crcf9_booking_detail_id_value,crcf9_n_w';
 
     const exp = [
       'crcf9_booking_id($select=cr49f_bl_number,cr49f_booking_no,cr49f_invoice_no,' +
@@ -336,7 +336,7 @@ function processData(rawRows) {
   const bdMap = new Map();
   let fallbackIdx = 0;
   rawRows.forEach(r => {
-    const bdId = r.crcf9_booking_detail_idname || ('__nobd_' + (fallbackIdx++));
+    const bdId = r['_crcf9_booking_detail_id_value'] || ('__nobd_' + (fallbackIdx++));
     if (!bdMap.has(bdId)) {
       bdMap.set(bdId, { _first: r, bdId, nwSum: 0, drayCSum: 0, drayEtcSum: 0, cnt: 0 });
     }
