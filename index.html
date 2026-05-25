@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LEENAI Profit Checker v1.6</title>
+<title>LEENAI Profit Checker v1.7</title>
 <script src="https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <style>
@@ -88,7 +88,7 @@ table.dt tr:hover td{background:var(--sf2);}
 <div id="appMain" class="hid">
   <div class="hd">
     <div class="logo">LEEN<span>AI</span></div>
-    <div class="hd-sub">Profit Checker | v1.6</div>
+    <div class="hd-sub">Profit Checker | v1.7</div>
     <div id="hdUser" class="hd-user" style="display:none;"></div>
     <div class="hd-gap"></div>
     <button class="btn-out" onclick="toggleTheme()">🌙 / ☀</button>
@@ -527,6 +527,8 @@ function applyFilters() {
     if (pkr && r.packer  !== pkr) return false;
     return true;
   });
+
+  filteredRows.sort((a, b) => (a.bl_etd || '').localeCompare(b.bl_etd || ''));
 
   renderSummary(filteredRows);
   renderDetail(filteredRows);
