@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LEENAI Profit Checker v1.2</title>
+<title>LEENAI Profit Checker v1.3</title>
 <script src="https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <style>
@@ -88,7 +88,7 @@ table.dt tr:hover td{background:var(--sf2);}
 <div id="appMain" class="hid">
   <div class="hd">
     <div class="logo">LEEN<span>AI</span></div>
-    <div class="hd-sub">Profit Checker | v1.2</div>
+    <div class="hd-sub">Profit Checker | v1.3</div>
     <div id="hdUser" class="hd-user" style="display:none;"></div>
     <div class="hd-gap"></div>
     <button class="btn-out" onclick="toggleTheme()">🌙 / ☀</button>
@@ -105,7 +105,10 @@ table.dt tr:hover td{background:var(--sf2);}
 
     <!-- Filter bar -->
     <div class="flt">
-      <select id="fltYm" onchange="applyFilters()"><option value="">年月 ▼</option></select>
+      <select id="fltYear" onchange="applyFilters()"><option value="">年度 ▼</option></select>
+      <select id="fltMonthFrom" onchange="applyFilters()"><option value="">月From ▼</option></select>
+      <span style="color:var(--tx2);font-size:12px;padding:0 2px;">〜</span>
+      <select id="fltMonthTo" onchange="applyFilters()"><option value="">月To ▼</option></select>
       <select id="fltBuyer" onchange="applyFilters()"><option value="">Buyer ▼</option></select>
       <select id="fltSection" onchange="applyFilters()"><option value="">Section ▼</option></select>
       <select id="fltPacker" onchange="applyFilters()"><option value="">Packer ▼</option></select>
@@ -458,17 +461,26 @@ function processData(rawRows) {
 // ══════════════════════════════════════════════════
 function populateFilters() {
   const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
-  const yms     = uniq(allRows.map(r => r.ym)).sort().reverse();
+  const years   = [...new Set(allRows.map(r => r.ym ? r.ym.slice(0,4) : null).filter(Boolean))].sort().reverse();
   const buyers  = uniq(allRows.map(r => r.buyer));
   const sects   = uniq(allRows.map(r => r.section));
   const packers = uniq(allRows.map(r => r.packer));
 
-  fillSel('fltYm',      yms,     '年月 ▼');
+  fillSel('fltYear',  years,   '年度 ▼');
+  fillMonthSel('fltMonthFrom', '月From ▼');
+  fillMonthSel('fltMonthTo',   '月To ▼');
   fillSel('fltBuyer',   buyers,  'Buyer ▼');
   fillSel('fltSection', sects,   'Section ▼');
   fillSel('fltPacker',  packers, 'Packer ▼');
 
-  if (yms.length > 0) document.getElementById('fltYm').value = yms[0];
+  if (years.length > 0) document.getElementById('fltYear').value = years[0];
+}
+
+function fillMonthSel(id, ph) {
+  document.getElementById(id).innerHTML =
+    `<option value="">${ph}</option>` +
+    ['01','02','03','04','05','06','07','08','09','10','11','12']
+      .map(m => `<option value="${m}">${parseInt(m)}月</option>`).join('');
 }
 
 function fillSel(id, vals, ph) {
@@ -478,24 +490,29 @@ function fillSel(id, vals, ph) {
 }
 
 function applyFilters() {
-  const ym  = document.getElementById('fltYm').value;
+  const yr  = document.getElementById('fltYear').value;
+  const mf  = document.getElementById('fltMonthFrom').value;
+  const mt  = document.getElementById('fltMonthTo').value;
   const byr = document.getElementById('fltBuyer').value;
   const sec = document.getElementById('fltSection').value;
   const pkr = document.getElementById('fltPacker').value;
 
-  filteredRows = allRows.filter(r =>
-    (!ym  || r.ym      === ym)  &&
-    (!byr || r.buyer   === byr) &&
-    (!sec || r.section === sec) &&
-    (!pkr || r.packer  === pkr)
-  );
+  filteredRows = allRows.filter(r => {
+    if (yr  && (!r.ym || r.ym.slice(0,4) !== yr))  return false;
+    if (mf  && (!r.ym || r.ym.slice(4,6) < mf))    return false;
+    if (mt  && (!r.ym || r.ym.slice(4,6) > mt))    return false;
+    if (byr && r.buyer   !== byr) return false;
+    if (sec && r.section !== sec) return false;
+    if (pkr && r.packer  !== pkr) return false;
+    return true;
+  });
 
   renderSummary(filteredRows);
   renderDetail(filteredRows);
 }
 
 function clearFilters() {
-  ['fltYm','fltBuyer','fltSection','fltPacker'].forEach(id =>
+  ['fltYear','fltMonthFrom','fltMonthTo','fltBuyer','fltSection','fltPacker'].forEach(id =>
     document.getElementById(id).value = '');
   applyFilters();
 }
@@ -514,10 +531,15 @@ function renderSummary(rows) {
     s.cnt++;
   });
 
-  const ym = document.getElementById('fltYm').value;
-  const examFee = ym
-    ? (otherExpMap[ym] || 0)
-    : Object.values(otherExpMap).reduce((a,b) => a+b, 0);
+  const yr = document.getElementById('fltYear').value;
+  const mf = document.getElementById('fltMonthFrom').value;
+  const mt = document.getElementById('fltMonthTo').value;
+  const examFee = Object.entries(otherExpMap).filter(([ym]) => {
+    if (yr && ym.slice(0,4) !== yr) return false;
+    if (mf && ym.slice(4,6) < mf)  return false;
+    if (mt && ym.slice(4,6) > mt)  return false;
+    return true;
+  }).reduce((a, [,v]) => a + v, 0);
 
   let totalP = 0, totalMT = 0, totalRateSum = 0, totalCnt = 0;
   let rows_html = '';
