@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LEENAI Profit Checker v1.4</title>
+<title>LEENAI Profit Checker v1.5</title>
 <script src="https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <style>
@@ -88,7 +88,7 @@ table.dt tr:hover td{background:var(--sf2);}
 <div id="appMain" class="hid">
   <div class="hd">
     <div class="logo">LEEN<span>AI</span></div>
-    <div class="hd-sub">Profit Checker | v1.4</div>
+    <div class="hd-sub">Profit Checker | v1.5</div>
     <div id="hdUser" class="hd-user" style="display:none;"></div>
     <div class="hd-gap"></div>
     <button class="btn-out" onclick="toggleTheme()">🌙 / ☀</button>
@@ -259,7 +259,7 @@ async function loadData() {
     token = await getToken();
 
     // Main OData query
-    const sel = 'crcf9_dray_cost,crcf9_incoterms,crcf9_other_expense,crcf9_purchase_price,_crcf9_booking_detail_id_value,crcf9_n_w';
+    const sel = 'crcf9_dray_cost,crcf9_incoterms,crcf9_other_expense,crcf9_purchase_price,_crcf9_booking_detail_id_value,_crcf9_booking_id_value,crcf9_n_w';
 
     const exp = [
       'crcf9_booking_id($select=cr49f_bl_number,cr49f_booking_no,cr49f_invoice_no,' +
@@ -346,11 +346,11 @@ function optLabel(raw, key, obj) {
 }
 
 function processData(rawRows) {
-  // Step 1: invoice_no별 CNTR 수 집계
+  // Step 1: booking GUID별 CNTR 수 집계 (expand依存を排除)
   const cntrMap = {};
   rawRows.forEach(r => {
-    const inv = r.cr49f_booking_id?.cr49f_invoice_no;
-    if (inv) cntrMap[inv] = (cntrMap[inv] || 0) + 1;
+    const bkId = r['_crcf9_booking_id_value'];
+    if (bkId) cntrMap[bkId] = (cntrMap[bkId] || 0) + 1;
   });
 
   // Step 2: bk_detail_ID별 집계
@@ -383,7 +383,8 @@ function processData(rawRows) {
     const buyerRec  = sc.cr49f_buyer_id           || {};
 
     const invoice_no = bk.cr49f_invoice_no || '';
-    const CNTR = cntrMap[invoice_no] || 1;
+    const bkId = r['_crcf9_booking_id_value'] || '';
+    const CNTR = cntrMap[bkId] || 1;
     const bk_detail_count = bd.cnt;
 
     // Raw values (null→0)
