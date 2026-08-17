@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LEENAI Profit Checker v1.7</title>
+<title>LEENAI Profit Checker v1.8</title>
 <script src="https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <style>
@@ -88,7 +88,7 @@ table.dt tr:hover td{background:var(--sf2);}
 <div id="appMain" class="hid">
   <div class="hd">
     <div class="logo">LEEN<span>AI</span></div>
-    <div class="hd-sub">Profit Checker | v1.7</div>
+    <div class="hd-sub">Profit Checker | v1.8</div>
     <div id="hdUser" class="hd-user" style="display:none;"></div>
     <div class="hd-gap"></div>
     <button class="btn-out" onclick="toggleTheme()">🌙 / ☀</button>
@@ -113,6 +113,9 @@ table.dt tr:hover td{background:var(--sf2);}
       <select id="fltBuyer" onchange="applyFilters()"><option value="">Buyer ▼</option></select>
       <select id="fltSection" onchange="applyFilters()"><option value="">Section ▼</option></select>
       <select id="fltPacker" onchange="applyFilters()"><option value="">Packer ▼</option></select>
+      <select id="fltShipLine" onchange="applyFilters()"><option value="">S/L ▼</option></select>
+      <select id="fltPOL" onchange="applyFilters()"><option value="">POL ▼</option></select>
+      <select id="fltPOD" onchange="applyFilters()"><option value="">POD ▼</option></select>
       <button class="btn btn-sm" onclick="clearFilters()">フィルタ初期化</button>
     </div>
 
@@ -268,7 +271,10 @@ async function loadData() {
         'crcf9_bl_etd,crcf9_bl_exchange_rate,crcf9_bl_freight;' +
         '$expand=cr49f_carrier_cost_id($select=crcf9_carrier_name,crcf9_cost_per_bl,' +
           'crcf9_cost_per_van_jpy,crcf9_cost_per_van_usd),' +
-        'cr49f_fowarder_id($select=crcf9_custom_fee,crcf9_forwarder_cost))',
+        'cr49f_fowarder_id($select=crcf9_custom_fee,crcf9_forwarder_cost),' +
+        'cr49f_carrier_id($select=crcf9_carrier),' +
+        'cr49f_region_japan_id($select=crcf9_pol),' +
+        'cr49f_region_id($select=cr49f_pod))',
       'crcf9_item_id($select=cr49f_item,cr49f_naccs_code)',
       'crcf9_purchase_contract_id($select=cr49f_exchange_rate;' +
         '$expand=cr49f_packer_id($select=cr49f_packer))',
@@ -428,6 +434,11 @@ function processData(rawRows) {
     const p1mt    = Net_W > 0 && rate > 0 ? Profit / Net_W / rate : 0;
     const Qtn_cn  = bk_detail_count > 0 ? Net_W / bk_detail_count : 0;
 
+    // Shipping Line / POL / POD
+    const shipping_line = (bk.cr49f_carrier_id && bk.cr49f_carrier_id.crcf9_carrier) || '';
+    const pol            = (bk.cr49f_region_japan_id && bk.cr49f_region_japan_id.crcf9_pol) || '';
+    const pod            = (bk.cr49f_region_id && bk.cr49f_region_id.cr49f_pod) || '';
+
     // Date
     const ym = toYM(bk.crcf9_bl_etd) || '';
 
@@ -468,6 +479,7 @@ function processData(rawRows) {
       packer:     packerRec.cr49f_packer || '',
       item:       itemRec.cr49f_item     || '',
       section, ym,
+      shipping_line, pol, pod,
       Buy_Y, sel_d, sel_y, rate, cms,
       Net_W, SEL, BUY, Profit, p1mt,
       Dray_C, Cstm, Mrn, Isrc_con, BL_etc, S_cms, Dray_etc, Qtn_cn,
@@ -491,10 +503,17 @@ function populateFilters() {
 
   fillMonthSel('fltMonthFrom', '月From ▼');
   fillMonthSel('fltMonthTo',   '月To ▼');
-  fillSel('fltItem',    items,   'Item ▼');
-  fillSel('fltBuyer',   buyers,  'Buyer ▼');
-  fillSel('fltSection', sects,   'Section ▼');
-  fillSel('fltPacker',  packers, 'Packer ▼');
+  const shipLines = uniq(allRows.map(r => r.shipping_line));
+  const pols      = uniq(allRows.map(r => r.pol));
+  const pods      = uniq(allRows.map(r => r.pod));
+
+  fillSel('fltItem',     items,     'Item ▼');
+  fillSel('fltBuyer',    buyers,    'Buyer ▼');
+  fillSel('fltSection',  sects,     'Section ▼');
+  fillSel('fltPacker',   packers,   'Packer ▼');
+  fillSel('fltShipLine', shipLines, 'S/L ▼');
+  fillSel('fltPOL',      pols,      'POL ▼');
+  fillSel('fltPOD',      pods,      'POD ▼');
 }
 
 function fillMonthSel(id, ph) {
@@ -517,6 +536,9 @@ function applyFilters() {
   const byr = document.getElementById('fltBuyer').value;
   const sec = document.getElementById('fltSection').value;
   const pkr = document.getElementById('fltPacker').value;
+  const sl  = document.getElementById('fltShipLine').value;
+  const pol = document.getElementById('fltPOL').value;
+  const pod = document.getElementById('fltPOD').value;
 
   filteredRows = allRows.filter(r => {
     if (mf  && (!r.ym || r.ym.slice(4,6) < mf))    return false;
@@ -524,7 +546,10 @@ function applyFilters() {
     if (itm && r.item    !== itm) return false;
     if (byr && r.buyer   !== byr) return false;
     if (sec && r.section !== sec) return false;
-    if (pkr && r.packer  !== pkr) return false;
+    if (pkr && r.packer        !== pkr) return false;
+    if (sl  && r.shipping_line !== sl)  return false;
+    if (pol && r.pol           !== pol) return false;
+    if (pod && r.pod           !== pod) return false;
     return true;
   });
 
@@ -535,7 +560,7 @@ function applyFilters() {
 }
 
 function clearFilters() {
-  ['fltMonthFrom','fltMonthTo','fltItem','fltBuyer','fltSection','fltPacker'].forEach(id =>
+  ['fltMonthFrom','fltMonthTo','fltItem','fltBuyer','fltSection','fltPacker','fltShipLine','fltPOL','fltPOD'].forEach(id =>
     document.getElementById(id).value = '');
   applyFilters();
 }
@@ -628,8 +653,11 @@ const BASE_COLS = [
   {k:'bl_etd',    h:'BL DATE'},
   {k:'invoice_no',h:'Invoice No'},
   {k:'buyer',     h:'Buyer'},
-  {k:'packer',    h:'Packer'},
-  {k:'item',      h:'Item'},
+  {k:'packer',       h:'Packer'},
+  {k:'shipping_line',h:'S/L'},
+  {k:'pol',          h:'POL'},
+  {k:'pod',          h:'POD'},
+  {k:'item',         h:'Item'},
   {k:'Buy_Y',     h:'Buy_Y',      r:true, fmt:'d1'},
   {k:'sel_d',     h:'Sel_D($)',   r:true, fmt:'d2'},
   {k:'Net_W',     h:'Net_W(MT)',  r:true, fmt:'mt'},
@@ -699,7 +727,7 @@ function toggleCols() {
 // ══════════════════════════════════════════════════
 function exportExcel() {
   if (!filteredRows.length) return;
-  const ym = document.getElementById('fltYm').value || 'ALL';
+  const ym = document.getElementById('selYear').value || 'ALL';
   const cols = [...BASE_COLS, ...EXT_COLS];
   const header = cols.map(c => c.h);
   const data = filteredRows.map(r => cols.map(c => {
@@ -747,8 +775,16 @@ function showGateErr(msg) {
 }
 function toggleTheme() {
   const h = document.documentElement;
-  h.setAttribute('data-theme', h.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  const next = h.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  h.setAttribute('data-theme', next);
+  localStorage.setItem('leenai_theme', next);
 }
+
+// テーマ復元 (§13準拠)
+(function(){
+  const saved = localStorage.getItem('leenai_theme');
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+})();
 </script>
 </body>
 </html>
