@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LEENAI Profit Checker v1.11</title>
+<title>LEENAI Profit Checker v1.12</title>
 <script src="https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <style>
@@ -83,6 +83,10 @@ table.dt tr:hover td{background:var(--sf2);}
 .mdp label{display:flex;align-items:center;gap:8px;padding:7px 13px;cursor:pointer;font-size:13px;color:var(--tx);transition:background .15s;}
 .mdp label:hover{background:var(--sf2);}
 .mdp input[type=checkbox]{accent-color:var(--ac);width:14px;height:14px;flex-shrink:0;}
+.mdp-hd{padding:7px 13px 6px;border-bottom:1px solid var(--bd);}
+.mdp-all{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tx);cursor:pointer;font-weight:600;}
+.mdp-all:hover{color:var(--ac);}
+.mdp-sep{height:1px;background:var(--bd);margin:0;}
 .hid{display:none!important;}
 .sys-badge{font-size:10px;font-weight:700;background:rgba(79,142,247,.15);color:var(--ac);padding:2px 8px;border-radius:4px;letter-spacing:0.5px;border:1px solid rgba(79,142,247,.3);}
 </style>
@@ -103,7 +107,7 @@ table.dt tr:hover td{background:var(--sf2);}
 <div id="appMain" class="hid">
   <div class="hd">
     <div class="logo">LEEN<span>AI</span></div>
-    <div class="hd-sub">Profit Checker | v1.11</div>
+    <div class="hd-sub">Profit Checker | v1.12</div>
     <span class="sys-badge">SYS-E-05</span>
     <div id="hdUser" class="hd-user" style="display:none;"></div>
     <div class="hd-gap"></div>
@@ -570,21 +574,55 @@ function fillSel(id, vals, ph) {
 function fillMultiDrop(id, vals, label) {
   const panel = document.getElementById(id + '-p');
   if (!panel) return;
-  panel.innerHTML = vals.filter(v => v !== '' && v != null).map(v => {
+  const items = vals.filter(v => v !== '' && v != null).map(v => {
     const s = String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-    return `<label><input type="checkbox" value="${s}" onchange="updateDropCount('${id}');applyFilters()"> ${s}</label>`;
+    return `<label><input type="checkbox" class="item-chk" value="${s}" checked
+      onchange="onItemChk('${id}');applyFilters()"> ${s}</label>`;
   }).join('');
+  panel.innerHTML =
+    `<div class="mdp-hd">
+      <label class="mdp-all">
+        <input type="checkbox" id="${id}-all" checked onchange="toggleAll('${id}')">
+        全選択 / 解除
+      </label>
+    </div>` + items;
   updateDropCount(id);
 }
 
 function updateDropCount(id) {
-  const cnt = document.querySelectorAll(`#${id}-p input:checked`).length;
   const badge = document.getElementById(id + '-c');
-  if (badge) { badge.textContent = cnt || ''; badge.classList.toggle('on', cnt > 0); }
+  if (!badge) return;
+  const allChk = document.getElementById(id + '-all');
+  if (allChk && allChk.checked) {
+    badge.textContent = ''; badge.classList.remove('on');  // 전체 선택 = 배지 숨김
+  } else {
+    const cnt = document.querySelectorAll(`#${id}-p input.item-chk:checked`).length;
+    badge.textContent = cnt || ''; badge.classList.toggle('on', cnt > 0);
+  }
 }
 
 function getSelected(id) {
-  return new Set([...document.querySelectorAll(`#${id}-p input:checked`)].map(c => c.value));
+  const allChk = document.getElementById(id + '-all');
+  if (allChk && allChk.checked) return null;  // 전체 선택 → 필터 없음
+  return new Set([...document.querySelectorAll(`#${id}-p input.item-chk:checked`)].map(c => c.value));
+}
+
+// 전체선택 토글 (헤더 체크박스)
+function toggleAll(id) {
+  const allChk = document.getElementById(id + '-all');
+  document.querySelectorAll(`#${id}-p input.item-chk`)
+    .forEach(c => c.checked = allChk.checked);
+  updateDropCount(id);
+  applyFilters();
+}
+
+// 개별 체크 시 전체선택 체크박스 동기화
+function onItemChk(id) {
+  const allChk = document.getElementById(id + '-all');
+  if (!allChk) return;
+  const items = document.querySelectorAll(`#${id}-p input.item-chk`);
+  allChk.checked = [...items].every(c => c.checked);
+  updateDropCount(id);
 }
 
 function toggleDrop(id) {
@@ -615,13 +653,13 @@ function applyFilters() {
   filteredRows = allRows.filter(r => {
     if (mf   && (!r.ym || r.ym.slice(4,6) < mf))  return false;
     if (mt   && (!r.ym || r.ym.slice(4,6) > mt))  return false;
-    if (itms.size && !itms.has(r.item))            return false;
-    if (byrs.size && !byrs.has(r.buyer))           return false;
-    if (secs.size && !secs.has(r.section))         return false;
-    if (pkrs.size && !pkrs.has(r.packer))          return false;
-    if (sls.size  && !sls.has(r.shipping_line))    return false;
-    if (pols.size && !pols.has(r.pol))             return false;
-    if (pods.size && !pods.has(r.pod))             return false;
+    if (itms && !itms.has(r.item))            return false;
+    if (byrs && !byrs.has(r.buyer))           return false;
+    if (secs && !secs.has(r.section))         return false;
+    if (pkrs && !pkrs.has(r.packer))          return false;
+    if (sls  && !sls.has(r.shipping_line))    return false;
+    if (pols && !pols.has(r.pol))             return false;
+    if (pods && !pods.has(r.pod))             return false;
     return true;
   });
 
@@ -635,7 +673,9 @@ function clearFilters() {
   document.getElementById('fltMonthFrom').value = '';
   document.getElementById('fltMonthTo').value = '';
   ['fltItem','fltBuyer','fltSection','fltPacker','fltShipLine','fltPOL','fltPOD'].forEach(id => {
-    document.querySelectorAll(`#${id}-p input:checked`).forEach(c => c.checked = false);
+    const allChk = document.getElementById(id + '-all');
+    if (allChk) allChk.checked = true;  // 전체선택 복원
+    document.querySelectorAll(`#${id}-p input.item-chk`).forEach(c => c.checked = true);
     updateDropCount(id);
   });
   applyFilters();
