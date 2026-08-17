@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LEENAI Profit Checker v1.10</title>
+<title>LEENAI Profit Checker v1.11</title>
 <script src="https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <style>
@@ -72,6 +72,17 @@ table.dt tr:hover td{background:var(--sf2);}
 .gate-btn:hover{opacity:.85;}
 .gate-note{font-size:11px;color:var(--tx3);text-align:center;line-height:1.7;}
 .gate-err{color:var(--dg);font-size:12px;padding:6px 14px;background:rgba(239,68,68,.1);border-radius:6px;display:none;max-width:360px;text-align:center;}
+/* ── 멀티 드롭다운 필터 ── */
+.multi-drop{position:relative;display:inline-block;}
+.mdb{background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r);padding:5px 10px;cursor:pointer;font-size:13px;color:var(--tx);white-space:nowrap;min-width:70px;transition:border-color .2s;display:inline-flex;align-items:center;gap:4px;}
+.mdb:hover{border-color:var(--ac);}
+.mdc{background:var(--ac);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;display:none;}
+.mdc.on{display:inline;}
+.mdp{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:300;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);min-width:170px;max-height:230px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.35);}
+.mdp.open{display:block;}
+.mdp label{display:flex;align-items:center;gap:8px;padding:7px 13px;cursor:pointer;font-size:13px;color:var(--tx);transition:background .15s;}
+.mdp label:hover{background:var(--sf2);}
+.mdp input[type=checkbox]{accent-color:var(--ac);width:14px;height:14px;flex-shrink:0;}
 .hid{display:none!important;}
 .sys-badge{font-size:10px;font-weight:700;background:rgba(79,142,247,.15);color:var(--ac);padding:2px 8px;border-radius:4px;letter-spacing:0.5px;border:1px solid rgba(79,142,247,.3);}
 </style>
@@ -92,7 +103,7 @@ table.dt tr:hover td{background:var(--sf2);}
 <div id="appMain" class="hid">
   <div class="hd">
     <div class="logo">LEEN<span>AI</span></div>
-    <div class="hd-sub">Profit Checker | v1.10</div>
+    <div class="hd-sub">Profit Checker | v1.11</div>
     <span class="sys-badge">SYS-E-05</span>
     <div id="hdUser" class="hd-user" style="display:none;"></div>
     <div class="hd-gap"></div>
@@ -114,13 +125,34 @@ table.dt tr:hover td{background:var(--sf2);}
       <select id="fltMonthFrom" onchange="applyFilters()"><option value="">月From ▼</option></select>
       <span style="color:var(--tx2);font-size:12px;padding:0 2px;">〜</span>
       <select id="fltMonthTo" onchange="applyFilters()"><option value="">月To ▼</option></select>
-      <select id="fltItem" onchange="applyFilters()"><option value="">Item ▼</option></select>
-      <select id="fltBuyer" onchange="applyFilters()"><option value="">Buyer ▼</option></select>
-      <select id="fltSection" onchange="applyFilters()"><option value="">Section ▼</option></select>
-      <select id="fltPacker" onchange="applyFilters()"><option value="">Packer ▼</option></select>
-      <select id="fltShipLine" onchange="applyFilters()"><option value="">S/L ▼</option></select>
-      <select id="fltPOL" onchange="applyFilters()"><option value="">POL ▼</option></select>
-      <select id="fltPOD" onchange="applyFilters()"><option value="">POD ▼</option></select>
+      <div class="multi-drop" id="fltItem">
+        <button class="mdb" onclick="toggleDrop('fltItem')">Item <span class="mdc" id="fltItem-c"></span></button>
+        <div class="mdp" id="fltItem-p"></div>
+      </div>
+      <div class="multi-drop" id="fltBuyer">
+        <button class="mdb" onclick="toggleDrop('fltBuyer')">Buyer <span class="mdc" id="fltBuyer-c"></span></button>
+        <div class="mdp" id="fltBuyer-p"></div>
+      </div>
+      <div class="multi-drop" id="fltSection">
+        <button class="mdb" onclick="toggleDrop('fltSection')">Section <span class="mdc" id="fltSection-c"></span></button>
+        <div class="mdp" id="fltSection-p"></div>
+      </div>
+      <div class="multi-drop" id="fltPacker">
+        <button class="mdb" onclick="toggleDrop('fltPacker')">Packer <span class="mdc" id="fltPacker-c"></span></button>
+        <div class="mdp" id="fltPacker-p"></div>
+      </div>
+      <div class="multi-drop" id="fltShipLine">
+        <button class="mdb" onclick="toggleDrop('fltShipLine')">S/L <span class="mdc" id="fltShipLine-c"></span></button>
+        <div class="mdp" id="fltShipLine-p"></div>
+      </div>
+      <div class="multi-drop" id="fltPOL">
+        <button class="mdb" onclick="toggleDrop('fltPOL')">POL <span class="mdc" id="fltPOL-c"></span></button>
+        <div class="mdp" id="fltPOL-p"></div>
+      </div>
+      <div class="multi-drop" id="fltPOD">
+        <button class="mdb" onclick="toggleDrop('fltPOD')">POD <span class="mdc" id="fltPOD-c"></span></button>
+        <div class="mdp" id="fltPOD-p"></div>
+      </div>
       <button class="btn btn-sm" onclick="clearFilters()">フィルタ初期化</button>
     </div>
 
@@ -512,13 +544,13 @@ function populateFilters() {
   const pols      = uniq(allRows.map(r => r.pol));
   const pods      = uniq(allRows.map(r => r.pod));
 
-  fillSel('fltItem',     items,     'Item ▼');
-  fillSel('fltBuyer',    buyers,    'Buyer ▼');
-  fillSel('fltSection',  sects,     'Section ▼');
-  fillSel('fltPacker',   packers,   'Packer ▼');
-  fillSel('fltShipLine', shipLines, 'S/L ▼');
-  fillSel('fltPOL',      pols,      'POL ▼');
-  fillSel('fltPOD',      pods,      'POD ▼');
+  fillMultiDrop('fltItem',     items,     'Item');
+  fillMultiDrop('fltBuyer',    buyers,    'Buyer');
+  fillMultiDrop('fltSection',  sects,     'Section');
+  fillMultiDrop('fltPacker',   packers,   'Packer');
+  fillMultiDrop('fltShipLine', shipLines, 'S/L');
+  fillMultiDrop('fltPOL',      pols,      'POL');
+  fillMultiDrop('fltPOD',      pods,      'POD');
 }
 
 function fillMonthSel(id, ph) {
@@ -534,27 +566,62 @@ function fillSel(id, vals, ph) {
     vals.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
 }
 
+// ── 멀티 드롭다운 관련 함수 ──
+function fillMultiDrop(id, vals, label) {
+  const panel = document.getElementById(id + '-p');
+  if (!panel) return;
+  panel.innerHTML = vals.filter(v => v !== '' && v != null).map(v => {
+    const s = String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+    return `<label><input type="checkbox" value="${s}" onchange="updateDropCount('${id}');applyFilters()"> ${s}</label>`;
+  }).join('');
+  updateDropCount(id);
+}
+
+function updateDropCount(id) {
+  const cnt = document.querySelectorAll(`#${id}-p input:checked`).length;
+  const badge = document.getElementById(id + '-c');
+  if (badge) { badge.textContent = cnt || ''; badge.classList.toggle('on', cnt > 0); }
+}
+
+function getSelected(id) {
+  return new Set([...document.querySelectorAll(`#${id}-p input:checked`)].map(c => c.value));
+}
+
+function toggleDrop(id) {
+  const panel = document.getElementById(id + '-p');
+  const isOpen = panel.classList.contains('open');
+  document.querySelectorAll('.mdp.open').forEach(p => p.classList.remove('open'));
+  if (!isOpen) panel.classList.add('open');
+}
+
+// 외부 클릭 시 드롭다운 닫기
+document.addEventListener('click', e => {
+  if (!e.target.closest('.multi-drop')) {
+    document.querySelectorAll('.mdp.open').forEach(p => p.classList.remove('open'));
+  }
+});
+
 function applyFilters() {
-  const mf  = document.getElementById('fltMonthFrom').value;
-  const mt  = document.getElementById('fltMonthTo').value;
-  const itm = document.getElementById('fltItem').value;
-  const byr = document.getElementById('fltBuyer').value;
-  const sec = document.getElementById('fltSection').value;
-  const pkr = document.getElementById('fltPacker').value;
-  const sl  = document.getElementById('fltShipLine').value;
-  const pol = document.getElementById('fltPOL').value;
-  const pod = document.getElementById('fltPOD').value;
+  const mf   = document.getElementById('fltMonthFrom').value;
+  const mt   = document.getElementById('fltMonthTo').value;
+  const itms = getSelected('fltItem');
+  const byrs = getSelected('fltBuyer');
+  const secs = getSelected('fltSection');
+  const pkrs = getSelected('fltPacker');
+  const sls  = getSelected('fltShipLine');
+  const pols = getSelected('fltPOL');
+  const pods = getSelected('fltPOD');
 
   filteredRows = allRows.filter(r => {
-    if (mf  && (!r.ym || r.ym.slice(4,6) < mf))    return false;
-    if (mt  && (!r.ym || r.ym.slice(4,6) > mt))    return false;
-    if (itm && r.item    !== itm) return false;
-    if (byr && r.buyer   !== byr) return false;
-    if (sec && r.section !== sec) return false;
-    if (pkr && r.packer        !== pkr) return false;
-    if (sl  && r.shipping_line !== sl)  return false;
-    if (pol && r.pol           !== pol) return false;
-    if (pod && r.pod           !== pod) return false;
+    if (mf   && (!r.ym || r.ym.slice(4,6) < mf))  return false;
+    if (mt   && (!r.ym || r.ym.slice(4,6) > mt))  return false;
+    if (itms.size && !itms.has(r.item))            return false;
+    if (byrs.size && !byrs.has(r.buyer))           return false;
+    if (secs.size && !secs.has(r.section))         return false;
+    if (pkrs.size && !pkrs.has(r.packer))          return false;
+    if (sls.size  && !sls.has(r.shipping_line))    return false;
+    if (pols.size && !pols.has(r.pol))             return false;
+    if (pods.size && !pods.has(r.pod))             return false;
     return true;
   });
 
@@ -565,8 +632,12 @@ function applyFilters() {
 }
 
 function clearFilters() {
-  ['fltMonthFrom','fltMonthTo','fltItem','fltBuyer','fltSection','fltPacker','fltShipLine','fltPOL','fltPOD'].forEach(id =>
-    document.getElementById(id).value = '');
+  document.getElementById('fltMonthFrom').value = '';
+  document.getElementById('fltMonthTo').value = '';
+  ['fltItem','fltBuyer','fltSection','fltPacker','fltShipLine','fltPOL','fltPOD'].forEach(id => {
+    document.querySelectorAll(`#${id}-p input:checked`).forEach(c => c.checked = false);
+    updateDropCount(id);
+  });
   applyFilters();
 }
 
